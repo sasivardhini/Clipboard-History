@@ -305,14 +305,48 @@ function isExcludedSite(url) {
   }
 }
 
+// Track system clipboard monitoring
+let systemClipboardInterval = null;
+let lastSystemClipboard = '';
+
 /**
  * Start monitoring clipboard changes
- * NOTE: We don't use intervals anymore - content scripts handle clipboard events
+ * Monitors SYSTEM clipboard (from ANY app, not just browser)
  */
 function startClipboardMonitoring() {
-  console.log('✓ Clipboard monitoring enabled (event-driven via content scripts)');
-  // Content scripts will automatically capture copy/cut events
-  // No interval needed - this prevents service worker sleep issues
+  console.log('✓ Starting clipboard monitoring...');
+
+  // Content scripts handle browser clipboard events
+  // This monitors SYSTEM clipboard (from other apps)
+
+  if (systemClipboardInterval) {
+    clearInterval(systemClipboardInterval);
+  }
+
+  // Poll system clipboard every 2 seconds
+  systemClipboardInterval = setInterval(async () => {
+    try {
+      // Background script CAN read clipboard (has permissions)
+      const clipboardText = await navigator.clipboard.readText();
+
+      if (clipboardText && clipboardText.trim() && clipboardText !== lastSystemClipboard) {
+        lastSystemClipboard = clipboardText;
+
+        console.log('✓ System clipboard changed:', clipboardText.substring(0, 50));
+
+        // Save to clipboard history
+        await saveClipboard({
+          content: clipboardText,
+          url: 'system-clipboard'
+        });
+      }
+    } catch (error) {
+      // Clipboard read may fail if extension loses focus
+      console.debug('System clipboard check:', error.message);
+    }
+  }, 2000); // Check every 2 seconds
+
+  console.log('✓ System clipboard monitoring active (2s polling)');
 }
 
 /**
@@ -320,8 +354,11 @@ function startClipboardMonitoring() {
  */
 function stopClipboardMonitoring() {
   console.log('Clipboard monitoring disabled');
-  // Note: Content scripts will still capture events
-  // This just updates the settings flag
+
+  if (systemClipboardInterval) {
+    clearInterval(systemClipboardInterval);
+    systemClipboardInterval = null;
+  }
 }
 
 /**

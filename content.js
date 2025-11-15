@@ -8,61 +8,62 @@ let lastProcessedContent = '';
 
 /**
  * Listen for copy events
+ * Uses event.clipboardData - no permissions needed!
  */
-document.addEventListener('copy', async (event) => {
+document.addEventListener('copy', (event) => {
   try {
-    // Small delay to ensure clipboard is updated
-    setTimeout(async () => {
-      const copiedText = await navigator.clipboard.readText();
+    // Get the selected text (what's being copied)
+    const selection = window.getSelection();
+    const copiedText = selection ? selection.toString().trim() : '';
 
-      if (copiedText && copiedText !== lastProcessedContent) {
-        lastProcessedContent = copiedText;
+    if (copiedText && copiedText !== lastProcessedContent) {
+      lastProcessedContent = copiedText;
 
-        // Send to background script
-        chrome.runtime.sendMessage({
-          action: 'SAVE_CLIPBOARD',
-          data: {
-            content: copiedText,
-            url: window.location.href
-          }
-        }).catch(() => {
-          // Extension context invalidated, ignore
-        });
-      }
-    }, 100);
+      console.log('✓ Clipboard copy detected:', copiedText.substring(0, 50));
+
+      // Send to background script immediately
+      chrome.runtime.sendMessage({
+        action: 'SAVE_CLIPBOARD',
+        data: {
+          content: copiedText,
+          url: window.location.href
+        }
+      }).catch((error) => {
+        console.debug('Could not send to background:', error.message);
+      });
+    }
   } catch (error) {
-    // Clipboard access denied or error
-    console.debug('Clipboard access error:', error);
+    console.debug('Copy event error:', error);
   }
 });
 
 /**
  * Listen for cut events
  */
-document.addEventListener('cut', async (event) => {
+document.addEventListener('cut', (event) => {
   try {
-    // Small delay to ensure clipboard is updated
-    setTimeout(async () => {
-      const cutText = await navigator.clipboard.readText();
+    // Get the selected text (what's being cut)
+    const selection = window.getSelection();
+    const cutText = selection ? selection.toString().trim() : '';
 
-      if (cutText && cutText !== lastProcessedContent) {
-        lastProcessedContent = cutText;
+    if (cutText && cutText !== lastProcessedContent) {
+      lastProcessedContent = cutText;
 
-        // Send to background script
-        chrome.runtime.sendMessage({
-          action: 'SAVE_CLIPBOARD',
-          data: {
-            content: cutText,
-            url: window.location.href
-          }
-        }).catch(() => {
-          // Extension context invalidated, ignore
-        });
-      }
-    }, 100);
+      console.log('✓ Clipboard cut detected:', cutText.substring(0, 50));
+
+      // Send to background script immediately
+      chrome.runtime.sendMessage({
+        action: 'SAVE_CLIPBOARD',
+        data: {
+          content: cutText,
+          url: window.location.href
+        }
+      }).catch((error) => {
+        console.debug('Could not send to background:', error.message);
+      });
+    }
   } catch (error) {
-    // Clipboard access denied or error
-    console.debug('Clipboard access error:', error);
+    console.debug('Cut event error:', error);
   }
 });
 
@@ -89,30 +90,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 /**
  * Check clipboard content (called periodically by background script)
+ * NOTE: Removed clipboard read - we only use copy/cut events now (no permissions needed)
  */
 async function checkClipboard() {
-  try {
-    const clipboardText = await navigator.clipboard.readText();
-
-    if (clipboardText && clipboardText !== lastProcessedContent) {
-      lastProcessedContent = clipboardText;
-
-      // Send to background script
-      chrome.runtime.sendMessage({
-        action: 'SAVE_CLIPBOARD',
-        data: {
-          content: clipboardText,
-          url: window.location.href
-        }
-      });
-
-      return { success: true };
-    }
-
-    return { success: false, reason: 'no_change' };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
+  // No longer needed - copy/cut events handle everything
+  // This avoids permission errors on websites
+  return { success: false, reason: 'using_event_listeners' };
 }
 
 /**
