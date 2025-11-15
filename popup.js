@@ -1,14 +1,14 @@
 /**
- * Popup UI Controller - Advanced Auto-Refresh Edition
- * Manages the clipboard history popup interface with real-time updates
+ * Popup UI Controller - Advanced Manual Refresh Edition
+ * Manages the clipboard history popup interface with elegant manual refresh
  */
 
 let allItems = [];
 let filteredItems = [];
 let currentCategory = 'all';
 let searchQuery = '';
-let refreshInterval = null;
 let lastItemCount = 0;
+let isRefreshing = false;
 
 // DOM elements
 const clipboardList = document.getElementById('clipboardList');
@@ -21,15 +21,15 @@ const totalCountEl = document.getElementById('totalCount');
 const pinnedCountEl = document.getElementById('pinnedCount');
 const clearAllBtn = document.getElementById('clearAllBtn');
 const settingsBtn = document.getElementById('settingsBtn');
+const refreshBtn = document.getElementById('refreshBtn');
 
 /**
- * Initialize popup with auto-refresh
+ * Initialize popup
  */
 async function init() {
   showLoading();
   await loadItems();
   setupEventListeners();
-  setupAutoRefresh();
   hideLoading();
 
   // Add subtle entrance animation
@@ -37,51 +37,71 @@ async function init() {
 }
 
 /**
- * Setup auto-refresh mechanism
+ * Elegant manual refresh with advanced animations
  */
-function setupAutoRefresh() {
-  // Refresh every 2 seconds for real-time updates
-  refreshInterval = setInterval(async () => {
-    await refreshItems();
-  }, 2000);
+async function refreshItems(showSuccessAnimation = true) {
+  if (isRefreshing) return; // Prevent multiple simultaneous refreshes
 
-  // Listen for storage changes from background
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'ITEMS_UPDATED') {
-      refreshItems(true); // Force refresh with animation
-    }
-  });
+  isRefreshing = true;
 
-  // Cleanup on popup close
-  window.addEventListener('unload', () => {
-    if (refreshInterval) {
-      clearInterval(refreshInterval);
-    }
-  });
-}
-
-/**
- * Refresh items with smooth animation
- */
-async function refreshItems(showAnimation = false) {
   try {
+    // Add spinning animation to refresh button
+    refreshBtn.classList.add('refreshing');
+
+    // Add elegant loading overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'refresh-overlay';
+    document.body.appendChild(overlay);
+
+    setTimeout(() => overlay.classList.add('active'), 10);
+
+    // Fetch new items
     const response = await chrome.runtime.sendMessage({ action: 'GET_ITEMS' });
     const newItems = response || [];
 
     // Check if there are new items
     const hasNewItems = newItems.length > lastItemCount;
 
-    if (hasNewItems && showAnimation) {
-      // Flash subtle notification
-      showNewItemNotification();
-    }
+    // Minimum refresh duration for smooth UX (600ms)
+    await new Promise(resolve => setTimeout(resolve, 600));
 
+    // Update items
     lastItemCount = newItems.length;
     allItems = newItems;
+
+    // Fade out overlay
+    overlay.classList.remove('active');
+    setTimeout(() => overlay.remove(), 300);
+
+    // Update display with stagger animation
     applyFilters();
     updateStats();
+
+    // Show elegant success feedback
+    if (showSuccessAnimation) {
+      if (hasNewItems) {
+        showRefreshSuccess('✨ New items loaded!', 'success');
+        highlightNewItems();
+      } else {
+        showRefreshSuccess('✓ Up to date!', 'info');
+      }
+    }
+
+    // Success state for refresh button
+    setTimeout(() => {
+      refreshBtn.classList.remove('refreshing');
+      refreshBtn.classList.add('success');
+      setTimeout(() => refreshBtn.classList.remove('success'), 1200);
+    }, 100);
+
   } catch (error) {
-    console.debug('Refresh error (normal during extension reload):', error);
+    console.error('Refresh error:', error);
+    showRefreshSuccess('⚠ Refresh failed', 'error');
+    refreshBtn.classList.remove('refreshing');
+    refreshBtn.classList.add('error');
+    setTimeout(() => refreshBtn.classList.remove('error'), 1200);
+  } finally {
+    isRefreshing = false;
   }
 }
 
@@ -405,6 +425,19 @@ function setupEventListeners() {
   settingsBtn.addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
   });
+
+  // Refresh button
+  refreshBtn.addEventListener('click', async () => {
+    await refreshItems();
+  });
+
+  // Keyboard shortcut: Ctrl+R for refresh
+  document.addEventListener('keydown', async (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+      e.preventDefault(); // Prevent browser refresh
+      await refreshItems();
+    }
+  });
 }
 
 /**
@@ -476,6 +509,41 @@ function showNewItemNotification() {
       }, 2000);
     }
   }, 100);
+}
+
+/**
+ * Show elegant refresh success message
+ */
+function showRefreshSuccess(message, type = 'success') {
+  const notification = document.createElement('div');
+  notification.className = `refresh-notification ${type}`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+
+  // Add with animation
+  setTimeout(() => notification.classList.add('show'), 10);
+
+  // Remove after 2 seconds
+  setTimeout(() => {
+    notification.classList.remove('show');
+    setTimeout(() => notification.remove(), 300);
+  }, 2000);
+}
+
+/**
+ * Highlight newly added items
+ */
+function highlightNewItems() {
+  // Add highlight class to first 3 items
+  const items = document.querySelectorAll('.clipboard-item');
+  items.forEach((item, index) => {
+    if (index < 3) {
+      item.classList.add('new-item');
+      setTimeout(() => {
+        item.classList.remove('new-item');
+      }, 2000);
+    }
+  });
 }
 
 // Initialize popup
