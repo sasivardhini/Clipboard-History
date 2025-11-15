@@ -256,8 +256,12 @@ function createItemHTML(item) {
     `<span class="tag">${escapeHTML(tag)}</span>`
   ).join('');
 
+  // Special handling for images
+  const isImage = item.category === 'image';
+  const imagePreview = isImage ? `<div class="item-image-preview"><img src="${item.content}" alt="Clipboard image"/></div>` : '';
+
   return `
-    <div class="clipboard-item ${item.isPinned ? 'pinned' : ''}" data-id="${item.id}">
+    <div class="clipboard-item ${item.isPinned ? 'pinned' : ''} ${isImage ? 'is-image' : ''}" data-id="${item.id}">
       <div class="item-header">
         <div class="item-category">
           ${categoryIcon}
@@ -268,7 +272,7 @@ function createItemHTML(item) {
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </svg>
           </button>
-          <button class="action-btn copy-btn" data-id="${item.id}" title="Copy">
+          <button class="action-btn copy-btn" data-id="${item.id}" title="${isImage ? 'Copy Image' : 'Copy'}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
@@ -285,14 +289,17 @@ function createItemHTML(item) {
 
       <div class="item-title">${escapeHTML(item.title || preview)}</div>
 
-      <div class="item-preview">${escapeHTML(preview)}</div>
+      ${imagePreview}
+
+      ${!isImage ? `<div class="item-preview">${escapeHTML(preview)}</div>` : ''}
 
       ${tagsHTML ? `<div class="item-tags">${tagsHTML}</div>` : ''}
 
       <div class="item-footer">
         <span class="item-time">${timeAgo}</span>
         ${item.metadata.wordCount ? `<span class="item-meta">${item.metadata.wordCount} words</span>` : ''}
-        ${item.url ? `<span class="item-meta" title="${escapeHTML(item.url)}">from ${getDomain(item.url)}</span>` : ''}
+        ${item.metadata.size ? `<span class="item-meta">${Math.round(item.metadata.size / 1024)}KB</span>` : ''}
+        ${item.url && item.url !== 'clipboard-image' ? `<span class="item-meta" title="${escapeHTML(item.url)}">from ${getDomain(item.url)}</span>` : ''}
       </div>
     </div>
   `;
@@ -309,6 +316,7 @@ function getCategoryIcon(category) {
     email: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
     phone: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>',
     json: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3a2 2 0 012 2v6a2 2 0 002 2 2 2 0 002-2V9a2 2 0 012-2h3"/></svg>',
+    image: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
     color: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 000 20 4 4 0 010-8 2 2 0 100-4 6 6 0 000-12z"/></svg>',
     markdown: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h3l3 5 3-5h3v10h-3v-6l-3 4-3-4v6H3zM18 7h3v10h-3z"/></svg>',
   };
@@ -320,6 +328,10 @@ function getCategoryIcon(category) {
  */
 function getContentPreview(content, category) {
   const maxLength = 100;
+
+  if (category === 'image') {
+    return '[Image]'; // Images are shown as preview, not text
+  }
 
   if (category === 'code') {
     // Show first few lines of code
@@ -376,8 +388,14 @@ function attachItemListeners() {
       const id = parseInt(btn.dataset.id);
       const item = allItems.find(i => i.id === id);
       if (item) {
-        await copyToClipboard(item.content);
-        showToast('Copied to clipboard!');
+        // Handle image clipboard differently
+        if (item.category === 'image') {
+          await copyImageToClipboard(item.content, item.metadata.mimeType);
+          showToast('Image copied to clipboard!');
+        } else {
+          await copyToClipboard(item.content);
+          showToast('Copied to clipboard!');
+        }
       }
     });
   });
@@ -423,6 +441,28 @@ async function copyToClipboard(text) {
     await navigator.clipboard.writeText(text);
   } catch (error) {
     console.error('Copy failed:', error);
+  }
+}
+
+/**
+ * Copy image to clipboard
+ */
+async function copyImageToClipboard(base64Data, mimeType) {
+  try {
+    // Convert base64 to blob
+    const response = await fetch(base64Data);
+    const blob = await response.blob();
+
+    // Create clipboard item with image
+    const item = new ClipboardItem({
+      [mimeType || 'image/png']: blob
+    });
+
+    // Write to clipboard
+    await navigator.clipboard.write([item]);
+  } catch (error) {
+    console.error('Image copy failed:', error);
+    showToast('Failed to copy image');
   }
 }
 

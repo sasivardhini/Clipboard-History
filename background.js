@@ -1,12 +1,13 @@
 /**
  * Background Service Worker
  * Monitors clipboard changes and coordinates storage
- * Now with GROQ AI integration (ultra-fast!)
+ * Now with GROQ AI integration (ultra-fast!) + Snippet Templates!
  */
 
 import storageManager from './storage.js';
 import aiTagger from './ai-tagger.js';
 import groqAI from './groq-ai.js';
+import snippetManager from './snippets.js';
 
 // Last clipboard content to avoid duplicates
 let lastClipboardContent = '';
@@ -31,6 +32,9 @@ async function initialize() {
 
   // Initialize GROQ AI (API key loaded from storage)
   await groqAI.init();
+
+  // Initialize snippet manager
+  await snippetManager.init();
 
   // Load settings
   await loadSettings();
@@ -166,6 +170,27 @@ function handleMessage(request, sender, sendResponse) {
       });
       return true;
 
+    // Snippet management
+    case 'GET_SNIPPETS':
+      snippetManager.getAllSnippets().then(sendResponse);
+      return true;
+
+    case 'ADD_SNIPPET':
+      snippetManager.addSnippet(data.name, data.content, data.category, data.tags).then(sendResponse);
+      return true;
+
+    case 'UPDATE_SNIPPET':
+      snippetManager.updateSnippet(data.id, data.updates).then(sendResponse);
+      return true;
+
+    case 'DELETE_SNIPPET':
+      snippetManager.deleteSnippet(data.id).then(sendResponse);
+      return true;
+
+    case 'SEARCH_SNIPPETS':
+      sendResponse(snippetManager.searchSnippets(data.query));
+      return false;
+
     default:
       sendResponse({ error: 'Unknown action' });
       return false;
@@ -177,7 +202,7 @@ function handleMessage(request, sender, sendResponse) {
  */
 async function handleSaveClipboard(data, sender) {
   try {
-    const { content, url } = data;
+    const { content, url, type, mimeType, size } = data;
 
     // Avoid duplicates
     if (content === lastClipboardContent) {
@@ -189,58 +214,87 @@ async function handleSaveClipboard(data, sender) {
       return { success: false, reason: 'excluded_site' };
     }
 
-    // Check content length (max 1MB)
-    if (content.length > 1024 * 1024) {
+    // Check content length (max 5MB for images, 1MB for text)
+    const maxSize = type === 'image' ? 5 * 1024 * 1024 : 1024 * 1024;
+    if (content.length > maxSize) {
       return { success: false, reason: 'too_large' };
     }
 
-    // Analyze content with GROQ AI (ultra-fast Llama model!)
-    let analysis;
-    try {
-      // Try GROQ AI first (super fast!)
-      console.log('Analyzing with GROQ AI...');
-      analysis = await groqAI.analyzeContent(content, 'text');
+    let item;
 
-      // Enhance with local metadata if needed
-      if (!analysis.metadata) {
-        const localAnalysis = aiTagger.analyze(content, url);
-        analysis.metadata = localAnalysis.metadata;
+    // Handle IMAGE clipboard
+    if (type === 'image') {
+      item = {
+        content: content, // base64 image data
+        category: 'image',
+        tags: ['image', mimeType?.includes('png') ? 'png' : 'jpg', 'screenshot'],
+        url: url,
+        title: `Image (${Math.round(size / 1024)}KB)`,
+        metadata: {
+          type: 'image',
+          mimeType: mimeType,
+          size: size,
+          aiGenerated: false,
+          timestamp: Date.now()
+        }
+      };
+
+      console.log('✓ Saving image:', {
+        category: 'image',
+        mimeType: mimeType,
+        size: `${Math.round(size / 1024)}KB`
+      });
+    }
+    // Handle TEXT clipboard
+    else {
+      // Analyze content with GROQ AI (ultra-fast Llama model!)
+      let analysis;
+      try {
+        // Try GROQ AI first (super fast!)
+        console.log('Analyzing with GROQ AI...');
+        analysis = await groqAI.analyzeContent(content, 'text');
+
+        // Enhance with local metadata if needed
+        if (!analysis.metadata) {
+          const localAnalysis = aiTagger.analyze(content, url);
+          analysis.metadata = localAnalysis.metadata;
+        }
+
+        console.log('✓ GROQ AI analysis:', analysis.category, analysis.tags);
+      } catch (error) {
+        // Fallback to local AI tagger
+        console.log('Using local AI tagger fallback');
+        analysis = aiTagger.analyze(content, url);
       }
 
-      console.log('✓ GROQ AI analysis:', analysis.category, analysis.tags);
-    } catch (error) {
-      // Fallback to local AI tagger
-      console.log('Using local AI tagger fallback');
-      analysis = aiTagger.analyze(content, url);
-    }
-
-    // Don't save sensitive content by default
-    if (analysis.category === 'sensitive' && !settings.saveSensitive) {
-      return { success: false, reason: 'sensitive' };
-    }
-
-    // Create clipboard item with GROQ AI analysis
-    const item = {
-      content: content,
-      category: analysis.category || 'text',
-      tags: analysis.tags || [],
-      url: url,
-      title: analysis.title || analysis.metadata?.title || content.substring(0, 40),
-      metadata: {
-        ...analysis.metadata,
-        aiGenerated: analysis.aiGenerated || true,
-        aiProvider: analysis.aiProvider || 'GROQ',
-        confidence: analysis.confidence || 0.9,
-        sentiment: analysis.sentiment || 'informational'
+      // Don't save sensitive content by default
+      if (analysis.category === 'sensitive' && !settings.saveSensitive) {
+        return { success: false, reason: 'sensitive' };
       }
-    };
 
-    console.log('✓ Saving item:', {
-      category: item.category,
-      tags: item.tags.join(', '),
-      aiProvider: item.metadata.aiProvider,
-      length: content.length
-    });
+      // Create clipboard item with GROQ AI analysis
+      item = {
+        content: content,
+        category: analysis.category || 'text',
+        tags: analysis.tags || [],
+        url: url,
+        title: analysis.title || analysis.metadata?.title || content.substring(0, 40),
+        metadata: {
+          ...analysis.metadata,
+          aiGenerated: analysis.aiGenerated || true,
+          aiProvider: analysis.aiProvider || 'GROQ',
+          confidence: analysis.confidence || 0.9,
+          sentiment: analysis.sentiment || 'informational'
+        }
+      };
+
+      console.log('✓ Saving text:', {
+        category: item.category,
+        tags: item.tags.join(', '),
+        aiProvider: item.metadata.aiProvider,
+        length: content.length
+      });
+    }
 
     // Save to storage
     const id = await storageManager.addItem(item);
@@ -248,7 +302,7 @@ async function handleSaveClipboard(data, sender) {
     // Update last clipboard content
     lastClipboardContent = content;
 
-    return { success: true, id: id, analysis: analysis };
+    return { success: true, id: id, category: item.category };
   } catch (error) {
     console.error('Error saving clipboard:', error);
     return { success: false, error: error.message };
@@ -308,10 +362,12 @@ function isExcludedSite(url) {
 // Track system clipboard monitoring
 let systemClipboardInterval = null;
 let lastSystemClipboard = '';
+let lastSystemClipboardHash = '';
 
 /**
  * Start monitoring clipboard changes
  * Monitors SYSTEM clipboard (from ANY app, not just browser)
+ * Now supports TEXT, IMAGES, and FILES!
  */
 function startClipboardMonitoring() {
   console.log('✓ Starting clipboard monitoring...');
@@ -326,21 +382,62 @@ function startClipboardMonitoring() {
   // Poll system clipboard every 500ms (very responsive!)
   systemClipboardInterval = setInterval(async () => {
     try {
-      // Background script CAN read clipboard (has permissions)
-      const clipboardText = await navigator.clipboard.readText();
+      // Read clipboard items (supports text, images, files)
+      const clipboardItems = await navigator.clipboard.read();
 
-      if (clipboardText && clipboardText.trim() && clipboardText !== lastSystemClipboard) {
-        lastSystemClipboard = clipboardText;
+      if (clipboardItems && clipboardItems.length > 0) {
+        const item = clipboardItems[0];
 
-        console.log('✓ Clipboard changed:', clipboardText.substring(0, 50));
+        // Check for IMAGE first (priority)
+        if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
+          const imageBlob = await item.getType(item.types.find(t => t.startsWith('image/')));
 
-        // Save to clipboard history
-        const result = await handleSaveClipboard({
-          content: clipboardText,
-          url: 'clipboard'
-        }, null);
+          // Convert blob to base64 for storage
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64 = reader.result;
+            const hash = base64.substring(0, 100); // Simple hash for duplicate detection
 
-        console.log('✓ Save result:', result);
+            if (hash !== lastSystemClipboardHash) {
+              lastSystemClipboardHash = hash;
+
+              console.log('✓ Image clipboard detected:', imageBlob.type, imageBlob.size, 'bytes');
+
+              // Save image to clipboard history
+              const result = await handleSaveClipboard({
+                content: base64,
+                type: 'image',
+                mimeType: imageBlob.type,
+                size: imageBlob.size,
+                url: 'clipboard-image'
+              }, null);
+
+              console.log('✓ Image save result:', result);
+            }
+          };
+          reader.readAsDataURL(imageBlob);
+        }
+        // Check for TEXT
+        else if (item.types.includes('text/plain')) {
+          const textBlob = await item.getType('text/plain');
+          const clipboardText = await textBlob.text();
+
+          if (clipboardText && clipboardText.trim() && clipboardText !== lastSystemClipboard) {
+            lastSystemClipboard = clipboardText;
+            lastSystemClipboardHash = clipboardText.substring(0, 100);
+
+            console.log('✓ Text clipboard detected:', clipboardText.substring(0, 50));
+
+            // Save to clipboard history
+            const result = await handleSaveClipboard({
+              content: clipboardText,
+              type: 'text',
+              url: 'clipboard'
+            }, null);
+
+            console.log('✓ Text save result:', result);
+          }
+        }
       }
     } catch (error) {
       // Clipboard read may fail if extension loses focus - this is normal
@@ -348,7 +445,7 @@ function startClipboardMonitoring() {
     }
   }, 500); // Check every 500ms for instant response
 
-  console.log('✓ Clipboard monitoring active (500ms polling)');
+  console.log('✓ Clipboard monitoring active (500ms polling) - TEXT + IMAGES supported!');
 }
 
 /**
