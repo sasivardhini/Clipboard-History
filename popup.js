@@ -1,6 +1,6 @@
 /**
- * Popup UI Controller - Advanced Manual Refresh Edition
- * Manages the clipboard history popup interface with elegant manual refresh
+ * Popup UI Controller - Production Ready Edition
+ * Manages the clipboard history popup interface with robust error handling
  */
 
 let allItems = [];
@@ -24,20 +24,57 @@ const settingsBtn = document.getElementById('settingsBtn');
 const refreshBtn = document.getElementById('refreshBtn');
 
 /**
+ * Send message to background script with retry logic
+ * Fixes "Could not establish connection" errors
+ */
+async function sendMessageWithRetry(message, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await chrome.runtime.sendMessage(message);
+      return response;
+    } catch (error) {
+      console.log(`Message attempt ${i + 1} failed:`, error.message);
+
+      // If it's the last retry, throw the error
+      if (i === maxRetries - 1) {
+        throw error;
+      }
+
+      // Wait before retrying (exponential backoff: 100ms, 200ms, 400ms)
+      await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, i)));
+    }
+  }
+}
+
+/**
  * Initialize popup
  */
 async function init() {
-  showLoading();
+  try {
+    showLoading();
 
-  // Capture current clipboard content on open
-  await captureCurrentClipboard();
+    // Small delay to ensure background script is ready
+    await new Promise(resolve => setTimeout(resolve, 50));
 
-  await loadItems();
-  setupEventListeners();
-  hideLoading();
+    // Load items first (most important)
+    await loadItems();
 
-  // Add subtle entrance animation
-  document.body.classList.add('loaded');
+    // Try to capture current clipboard (non-critical)
+    captureCurrentClipboard().catch(err => {
+      console.log('Clipboard capture skipped:', err.message);
+    });
+
+    setupEventListeners();
+    hideLoading();
+
+    // Add subtle entrance animation
+    document.body.classList.add('loaded');
+  } catch (error) {
+    console.error('Initialization error:', error);
+    hideLoading();
+    showEmptyState();
+    showToast('Failed to load clipboard history');
+  }
 }
 
 /**
@@ -49,18 +86,20 @@ async function captureCurrentClipboard() {
     const text = await navigator.clipboard.readText();
 
     if (text && text.trim()) {
-      // Save to clipboard history
-      await chrome.runtime.sendMessage({
+      // Save to clipboard history with retry logic
+      await sendMessageWithRetry({
         action: 'SAVE_CLIPBOARD',
         data: {
           content: text,
           url: 'chrome-extension://popup'
         }
       });
+      console.log('Current clipboard captured successfully');
     }
   } catch (error) {
     // Clipboard read permission not granted or empty clipboard
-    console.log('Could not read clipboard:', error.message);
+    // This is non-critical, so we just log it
+    console.log('Could not capture clipboard:', error.message);
   }
 }
 
@@ -83,8 +122,8 @@ async function refreshItems(showSuccessAnimation = true) {
 
     setTimeout(() => overlay.classList.add('active'), 10);
 
-    // Fetch new items
-    const response = await chrome.runtime.sendMessage({ action: 'GET_ITEMS' });
+    // Fetch new items with retry logic
+    const response = await sendMessageWithRetry({ action: 'GET_ITEMS' });
     const newItems = response || [];
 
     // Check if there are new items
@@ -138,12 +177,14 @@ async function refreshItems(showSuccessAnimation = true) {
  */
 async function loadItems() {
   try {
-    const response = await chrome.runtime.sendMessage({ action: 'GET_ITEMS' });
+    const response = await sendMessageWithRetry({ action: 'GET_ITEMS' });
     allItems = response || [];
+    lastItemCount = allItems.length;
     applyFilters();
     updateStats();
   } catch (error) {
     console.error('Error loading items:', error);
+    allItems = [];
     showEmptyState();
   }
 }
@@ -377,13 +418,14 @@ async function copyToClipboard(text) {
  */
 async function togglePin(id) {
   try {
-    await chrome.runtime.sendMessage({
+    await sendMessageWithRetry({
       action: 'TOGGLE_PIN',
       data: { id }
     });
     await loadItems();
   } catch (error) {
     console.error('Toggle pin failed:', error);
+    showToast('Failed to pin/unpin item');
   }
 }
 
@@ -392,7 +434,7 @@ async function togglePin(id) {
  */
 async function deleteItem(id) {
   try {
-    await chrome.runtime.sendMessage({
+    await sendMessageWithRetry({
       action: 'DELETE_ITEM',
       data: { id }
     });
@@ -400,6 +442,7 @@ async function deleteItem(id) {
     showToast('Item deleted');
   } catch (error) {
     console.error('Delete failed:', error);
+    showToast('Failed to delete item');
   }
 }
 
@@ -443,9 +486,14 @@ function setupEventListeners() {
   // Clear all button
   clearAllBtn.addEventListener('click', async () => {
     if (confirm('Clear all non-pinned items?')) {
-      await chrome.runtime.sendMessage({ action: 'CLEAR_ALL' });
-      await loadItems();
-      showToast('Clipboard history cleared');
+      try {
+        await sendMessageWithRetry({ action: 'CLEAR_ALL' });
+        await loadItems();
+        showToast('Clipboard history cleared');
+      } catch (error) {
+        console.error('Clear all failed:', error);
+        showToast('Failed to clear history');
+      }
     }
   });
 
