@@ -1,12 +1,12 @@
 /**
  * Background Service Worker
  * Monitors clipboard changes and coordinates storage
- * Now with Google Gemini AI integration!
+ * Now with GROQ AI integration (ultra-fast!)
  */
 
 import storageManager from './storage.js';
 import aiTagger from './ai-tagger.js';
-import geminiAI from './gemini-ai.js';
+import groqAI from './groq-ai.js';
 
 // Last clipboard content to avoid duplicates
 let lastClipboardContent = '';
@@ -28,6 +28,9 @@ async function initialize() {
 
   // Initialize storage
   await storageManager.init();
+
+  // Initialize GROQ AI (API key loaded from storage)
+  await groqAI.init();
 
   // Load settings
   await loadSettings();
@@ -191,20 +194,24 @@ async function handleSaveClipboard(data, sender) {
       return { success: false, reason: 'too_large' };
     }
 
-    // Analyze content with AI (uses local AI tagger for reliability)
+    // Analyze content with GROQ AI (ultra-fast Llama model!)
     let analysis;
     try {
-      // Use local AI tagger (fast and reliable)
-      analysis = aiTagger.analyze(content, url);
-      console.log('Content analyzed:', analysis.category);
+      // Try GROQ AI first (super fast!)
+      console.log('Analyzing with GROQ AI...');
+      analysis = await groqAI.analyzeContent(content, 'text');
+
+      // Enhance with local metadata if needed
+      if (!analysis.metadata) {
+        const localAnalysis = aiTagger.analyze(content, url);
+        analysis.metadata = localAnalysis.metadata;
+      }
+
+      console.log('✓ GROQ AI analysis:', analysis.category, analysis.tags);
     } catch (error) {
-      // Ultra-safe fallback
-      console.error('AI analysis error:', error);
-      analysis = {
-        category: 'text',
-        tags: [],
-        metadata: { title: content.substring(0, 50) }
-      };
+      // Fallback to local AI tagger
+      console.log('Using local AI tagger fallback');
+      analysis = aiTagger.analyze(content, url);
     }
 
     // Don't save sensitive content by default
@@ -212,22 +219,28 @@ async function handleSaveClipboard(data, sender) {
       return { success: false, reason: 'sensitive' };
     }
 
-    // Create clipboard item with AI analysis
+    // Create clipboard item with GROQ AI analysis
     const item = {
       content: content,
       category: analysis.category || 'text',
       tags: analysis.tags || [],
       url: url,
-      title: analysis.metadata?.title || content.substring(0, 50),
+      title: analysis.title || analysis.metadata?.title || content.substring(0, 40),
       metadata: {
         ...analysis.metadata,
-        aiGenerated: true,
-        confidence: 0.8,
-        sentiment: 'informational'
+        aiGenerated: analysis.aiGenerated || true,
+        aiProvider: analysis.aiProvider || 'GROQ',
+        confidence: analysis.confidence || 0.9,
+        sentiment: analysis.sentiment || 'informational'
       }
     };
 
-    console.log('Saving clipboard item:', { category: item.category, length: content.length });
+    console.log('✓ Saving item:', {
+      category: item.category,
+      tags: item.tags.join(', '),
+      aiProvider: item.metadata.aiProvider,
+      length: content.length
+    });
 
     // Save to storage
     const id = await storageManager.addItem(item);

@@ -256,14 +256,14 @@ function createItemHTML(item) {
     `<span class="tag">${escapeHTML(tag)}</span>`
   ).join('');
 
-  // AI badge if analyzed by Google Gemini
+  // AI badge if analyzed by GROQ AI
+  const aiProvider = item.metadata?.aiProvider || 'AI';
   const aiBadge = item.metadata?.aiGenerated ?
-    `<span class="ai-badge" title="Analyzed by Google Gemini AI">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M12 6v6l4 2"/>
+    `<span class="ai-badge groq-badge" title="Analyzed by ${aiProvider} (Llama 3.1 - Ultra Fast!)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
       </svg>
-      AI
+      ${aiProvider}
     </span>` : '';
 
   return `
