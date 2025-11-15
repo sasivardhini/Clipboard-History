@@ -323,7 +323,7 @@ function startClipboardMonitoring() {
     clearInterval(systemClipboardInterval);
   }
 
-  // Poll system clipboard every 2 seconds
+  // Poll system clipboard every 500ms (very responsive!)
   systemClipboardInterval = setInterval(async () => {
     try {
       // Background script CAN read clipboard (has permissions)
@@ -332,21 +332,23 @@ function startClipboardMonitoring() {
       if (clipboardText && clipboardText.trim() && clipboardText !== lastSystemClipboard) {
         lastSystemClipboard = clipboardText;
 
-        console.log('✓ System clipboard changed:', clipboardText.substring(0, 50));
+        console.log('✓ Clipboard changed:', clipboardText.substring(0, 50));
 
         // Save to clipboard history
-        await saveClipboard({
+        const result = await handleSaveClipboard({
           content: clipboardText,
-          url: 'system-clipboard'
-        });
+          url: 'clipboard'
+        }, null);
+
+        console.log('✓ Save result:', result);
       }
     } catch (error) {
-      // Clipboard read may fail if extension loses focus
-      console.debug('System clipboard check:', error.message);
+      // Clipboard read may fail if extension loses focus - this is normal
+      console.debug('Clipboard check:', error.message);
     }
-  }, 2000); // Check every 2 seconds
+  }, 500); // Check every 500ms for instant response
 
-  console.log('✓ System clipboard monitoring active (2s polling)');
+  console.log('✓ Clipboard monitoring active (500ms polling)');
 }
 
 /**
