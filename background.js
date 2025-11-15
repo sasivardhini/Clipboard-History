@@ -25,35 +25,98 @@ let settings = {
  * Initialize extension
  */
 async function initialize() {
+  console.log('===========================================');
   console.log('Clipboard History Extension: Initializing...');
+  console.log('===========================================');
 
-  // Initialize storage
-  await storageManager.init();
+  try {
+    // Request clipboard permissions explicitly
+    console.log('Requesting clipboard permissions...');
+    const hasPermissions = await chrome.permissions.contains({
+      permissions: ['clipboardRead', 'clipboardWrite']
+    });
 
-  // Initialize GROQ AI (API key loaded from storage)
-  await groqAI.init();
+    if (!hasPermissions) {
+      console.warn('⚠️ Clipboard permissions not granted! Extension may not work properly.');
+      console.log('Requesting permissions...');
+      try {
+        const granted = await chrome.permissions.request({
+          permissions: ['clipboardRead', 'clipboardWrite']
+        });
+        console.log('Permissions granted:', granted);
+      } catch (e) {
+        console.error('Could not request permissions:', e);
+      }
+    } else {
+      console.log('✓ Clipboard permissions already granted');
+    }
 
-  // Initialize snippet manager
-  await snippetManager.init();
+    // Initialize storage
+    console.log('Initializing storage...');
+    await storageManager.init();
+    console.log('✓ Storage initialized');
 
-  // Load settings
-  await loadSettings();
+    // Test storage immediately
+    const testItems = await storageManager.getAllItems();
+    console.log('✓ Storage test: Found', testItems.length, 'existing items');
 
-  // Set up message listeners
-  chrome.runtime.onMessage.addListener(handleMessage);
+    // Initialize GROQ AI (API key loaded from storage)
+    console.log('Initializing GROQ AI...');
+    await groqAI.init();
+    console.log('✓ GROQ AI initialized');
 
-  // Set up context menu
-  setupContextMenu();
+    // Initialize snippet manager
+    console.log('Initializing snippets...');
+    await snippetManager.init();
+    console.log('✓ Snippets initialized');
 
-  // Note: Content scripts are auto-injected via manifest.json
-  // No manual injection needed (prevents double-execution errors)
+    // Load settings
+    console.log('Loading settings...');
+    await loadSettings();
+    console.log('✓ Settings loaded:', settings);
 
-  // Start clipboard monitoring if enabled
-  if (settings.monitoringEnabled) {
+    // Set up message listeners
+    chrome.runtime.onMessage.addListener(handleMessage);
+    console.log('✓ Message listeners registered');
+
+    // Set up context menu
+    setupContextMenu();
+    console.log('✓ Context menu setup');
+
+    // Note: Content scripts are auto-injected via manifest.json
+    // No manual injection needed (prevents double-execution errors)
+
+    // Start clipboard monitoring if enabled (ALWAYS START IT!)
+    console.log('Starting clipboard monitoring...');
     startClipboardMonitoring();
-  }
+    console.log('✓ Clipboard monitoring started');
 
-  console.log('Clipboard History Extension: Ready!');
+    // Keep service worker alive
+    keepAlive();
+    console.log('✓ Keep-alive mechanism activated');
+
+    console.log('===========================================');
+    console.log('✓✓✓ Clipboard History Extension: READY! ✓✓✓');
+    console.log('===========================================');
+    console.log('');
+    console.log('📋 Clipboard monitoring is now active!');
+    console.log('📋 Copy any text/image and it will be captured');
+    console.log('📋 Check clipboard: Press Ctrl+Shift+V');
+    console.log('');
+  } catch (error) {
+    console.error('❌ INITIALIZATION ERROR:', error);
+    console.error('Stack:', error.stack);
+  }
+}
+
+/**
+ * Keep service worker alive
+ */
+function keepAlive() {
+  setInterval(() => {
+    // Ping to keep service worker alive
+    console.debug('Service worker: alive');
+  }, 20000); // Every 20 seconds
 }
 
 /**
