@@ -261,7 +261,6 @@ function createItemHTML(item) {
       <div class="item-header">
         <div class="item-category">
           ${categoryIcon}
-          <span class="category-label">${item.category}</span>
         </div>
         <div class="item-actions">
           <button class="action-btn pin-btn" data-id="${item.id}" title="${item.isPinned ? 'Unpin' : 'Pin'}">
@@ -674,5 +673,56 @@ function highlightNewItems() {
   });
 }
 
+/**
+ * Auto-refresh when clipboard items change
+ * This makes the popup behave like a typical clipboard manager
+ */
+function setupAutoRefresh() {
+  let pollInterval;
+
+  // Poll for new items every 500ms (very responsive)
+  async function checkForNewItems() {
+    try {
+      const response = await sendMessageWithRetry({ action: 'GET_ITEMS' });
+      const newItems = response || [];
+
+      // Check if items have changed
+      if (newItems.length !== allItems.length) {
+        console.log('✓ New clipboard items detected - auto-refreshing');
+
+        const previousCount = allItems.length;
+        allItems = newItems;
+        lastItemCount = newItems.length;
+
+        applyFilters();
+        updateStats();
+
+        // Show notification if new items were added
+        if (newItems.length > previousCount) {
+          showNewItemNotification();
+          console.log(`✓ ${newItems.length - previousCount} new item(s) added`);
+        }
+      }
+    } catch (error) {
+      console.debug('Auto-refresh poll error:', error.message);
+    }
+  }
+
+  // Start polling
+  pollInterval = setInterval(checkForNewItems, 500);
+
+  // Clean up on popup close
+  window.addEventListener('unload', () => {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+    }
+  });
+
+  console.log('✓ Auto-refresh polling activated (500ms interval)');
+}
+
 // Initialize popup
 init();
+
+// Set up auto-refresh after initialization
+setupAutoRefresh();
