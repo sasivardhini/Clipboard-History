@@ -51,26 +51,28 @@ async function sendMessageWithRetry(message, maxRetries = 3) {
  */
 async function init() {
   try {
+    console.log('=== POPUP INITIALIZING ===');
     showLoading();
 
     // Small delay to ensure background script is ready
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Load items first (most important)
+    console.log('Loading items...');
     await loadItems();
+    console.log('✓ Items loaded:', allItems.length);
 
-    // Try to capture current clipboard (non-critical)
-    captureCurrentClipboard().catch(err => {
-      console.log('Clipboard capture skipped:', err.message);
-    });
+    // Don't auto-capture clipboard (can cause issues)
+    // User can manually refresh if needed
 
     setupEventListeners();
     hideLoading();
 
     // Add subtle entrance animation
     document.body.classList.add('loaded');
+    console.log('=== POPUP READY ===');
   } catch (error) {
-    console.error('Initialization error:', error);
+    console.error('❌ Initialization error:', error);
     hideLoading();
     showEmptyState();
     showToast('Failed to load clipboard history');
@@ -177,13 +179,20 @@ async function refreshItems(showSuccessAnimation = true) {
  */
 async function loadItems() {
   try {
+    console.log('Requesting items from background...');
     const response = await sendMessageWithRetry({ action: 'GET_ITEMS' });
+    console.log('Response received:', response);
+
     allItems = response || [];
     lastItemCount = allItems.length;
+
+    console.log('Processing', allItems.length, 'items');
+    console.log('Categories:', allItems.map(i => i.category));
+
     applyFilters();
     updateStats();
   } catch (error) {
-    console.error('Error loading items:', error);
+    console.error('❌ Error loading items:', error);
     allItems = [];
     showEmptyState();
   }
@@ -218,14 +227,19 @@ function applyFilters() {
  * Render clipboard items
  */
 function renderItems() {
+  console.log('Rendering', filteredItems.length, 'items');
+
   if (filteredItems.length === 0) {
+    console.log('No items to display - showing empty state');
     showEmptyState();
     return;
   }
 
   hideEmptyState();
 
-  clipboardList.innerHTML = filteredItems.map(item => createItemHTML(item)).join('');
+  const html = filteredItems.map(item => createItemHTML(item)).join('');
+  clipboardList.innerHTML = html;
+  console.log('✓ Items rendered to DOM');
 
   // Attach event listeners to items
   attachItemListeners();

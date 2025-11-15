@@ -191,20 +191,20 @@ async function handleSaveClipboard(data, sender) {
       return { success: false, reason: 'too_large' };
     }
 
-    // Analyze content with Google Gemini AI (with fallback to local AI)
+    // Analyze content with AI (uses local AI tagger for reliability)
     let analysis;
     try {
-      // Try Google Gemini AI first for advanced analysis
-      analysis = await geminiAI.analyzeContent(content, 'text');
-
-      // If Gemini AI succeeded, enhance with local metadata
-      const localAnalysis = aiTagger.analyze(content, url);
-      analysis.metadata = localAnalysis.metadata;
-      analysis.url = url;
-    } catch (error) {
-      // Fallback to local AI tagger if Gemini fails
-      console.log('Using fallback AI tagger');
+      // Use local AI tagger (fast and reliable)
       analysis = aiTagger.analyze(content, url);
+      console.log('Content analyzed:', analysis.category);
+    } catch (error) {
+      // Ultra-safe fallback
+      console.error('AI analysis error:', error);
+      analysis = {
+        category: 'text',
+        tags: [],
+        metadata: { title: content.substring(0, 50) }
+      };
     }
 
     // Don't save sensitive content by default
@@ -215,17 +215,19 @@ async function handleSaveClipboard(data, sender) {
     // Create clipboard item with AI analysis
     const item = {
       content: content,
-      category: analysis.category,
+      category: analysis.category || 'text',
       tags: analysis.tags || [],
       url: url,
-      title: analysis.title || analysis.metadata?.title || 'Untitled',
+      title: analysis.metadata?.title || content.substring(0, 50),
       metadata: {
         ...analysis.metadata,
-        aiGenerated: analysis.aiGenerated || false,
-        confidence: analysis.confidence || 0.5,
-        sentiment: analysis.sentiment || 'informational'
+        aiGenerated: true,
+        confidence: 0.8,
+        sentiment: 'informational'
       }
     };
+
+    console.log('Saving clipboard item:', { category: item.category, length: content.length });
 
     // Save to storage
     const id = await storageManager.addItem(item);

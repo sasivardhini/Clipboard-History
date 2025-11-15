@@ -14,6 +14,12 @@ class GeminiAI {
    * Analyze content with Google Gemini AI
    */
   async analyzeContent(content, type = 'text') {
+    // Always use fallback for now (Gemini API optional)
+    // This ensures extension works even if API key is invalid
+    console.log('Using local AI analysis (Gemini optional)');
+    return this.getFallbackAnalysis(content, type);
+
+    /* Gemini API integration (currently disabled - uncomment to enable)
     // Check cache first
     const cacheKey = `${type}:${content.substring(0, 100)}`;
     if (this.cache.has(cacheKey)) {
@@ -69,6 +75,7 @@ class GeminiAI {
       console.error('Gemini AI error:', error);
       return this.getFallbackAnalysis(content, type);
     }
+    */
   }
 
   /**
