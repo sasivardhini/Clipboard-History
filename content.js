@@ -3,6 +3,12 @@
  * Runs on web pages to capture clipboard events
  */
 
+// Prevent double execution if script is injected multiple times
+if (window.clipboardHistoryContentScriptLoaded) {
+  console.log('Clipboard History: Content script already loaded, skipping');
+} else {
+  window.clipboardHistoryContentScriptLoaded = true;
+
 // Track last clipboard content to avoid duplicates
 let lastProcessedContent = '';
 
@@ -199,3 +205,6 @@ if (!document.getElementById('clipboard-history-styles')) {
 }
 
 console.log('Clipboard History: Content script loaded');
+
+// Close the guard check
+}

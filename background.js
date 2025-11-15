@@ -41,8 +41,8 @@ async function initialize() {
   // Set up context menu
   setupContextMenu();
 
-  // Inject content scripts into all existing tabs
-  await injectContentScriptsToAllTabs();
+  // Note: Content scripts are auto-injected via manifest.json
+  // No manual injection needed (prevents double-execution errors)
 
   // Start clipboard monitoring if enabled
   if (settings.monitoringEnabled) {
