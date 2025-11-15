@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Extension Icons</title>
+</head>
+<body>
+    <h1>Generate Icons</h1>
+    <p>Right-click each canvas and "Save image as..." to create the icons:</p>
+
+    <h3>icon16.png</h3>
+    <canvas id="icon16" width="16" height="16"></canvas>
+
+    <h3>icon48.png</h3>
+    <canvas id="icon48" width="48" height="48"></canvas>
+
+    <h3>icon128.png</h3>
+    <canvas id="icon128" width="128" height="128"></canvas>
+
+    <script>
+        function drawIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#6366f1');
+            gradient.addColorStop(1, '#8b5cf6');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // Clipboard icon (simplified)
+            ctx.fillStyle = 'white';
+            const scale = size / 16;
+
+            // Top clip
+            ctx.fillRect(5 * scale, 2 * scale, 6 * scale, 1 * scale);
+
+            // Clipboard body
+            ctx.fillRect(3 * scale, 3 * scale, 10 * scale, 11 * scale);
+
+            // Lines
+            ctx.fillStyle = '#6366f1';
+            ctx.fillRect(5 * scale, 6 * scale, 6 * scale, 1 * scale);
+            ctx.fillRect(5 * scale, 8 * scale, 6 * scale, 1 * scale);
+            ctx.fillRect(5 * scale, 10 * scale, 6 * scale, 1 * scale);
+        }
+
+        drawIcon('icon16', 16);
+        drawIcon('icon48', 48);
+        drawIcon('icon128', 128);
+    </script>
+</body>
+</html>
