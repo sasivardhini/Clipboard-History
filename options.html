@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clipboard History - Settings</title>
+  <link rel="stylesheet" href="styles/options.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="header-content">
+        <div class="header-title">
+          <svg class="logo" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          <div>
+            <h1>Clipboard History Pro</h1>
+            <p>AI-Powered Clipboard Manager</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <nav class="sidebar">
+        <button class="nav-item active" data-section="general">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6m0 6v6m6-12h-6m-6 0H1m18 6h-6m-6 0H1"/>
+          </svg>
+          General
+        </button>
+        <button class="nav-item" data-section="privacy">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0110 0v4"/>
+          </svg>
+          Privacy
+        </button>
+        <button class="nav-item" data-section="ai">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v3m0 14v3m9-9h-3M6 12H3m15.364-6.364l-2.121 2.121M8.757 15.243l-2.121 2.121m12.728 0l-2.121-2.121M8.757 8.757L6.636 6.636"/>
+          </svg>
+          AI Tagging
+        </button>
+        <button class="nav-item" data-section="shortcuts">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="6" width="20" height="12" rx="2"/>
+            <circle cx="7" cy="12" r="1"/>
+            <circle cx="12" cy="12" r="1"/>
+            <circle cx="17" cy="12" r="1"/>
+          </svg>
+          Shortcuts
+        </button>
+        <button class="nav-item" data-section="about">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4m0-4h.01"/>
+          </svg>
+          About
+        </button>
+      </nav>
+
+      <div class="content">
+        <!-- General Section -->
+        <section id="general" class="section active">
+          <h2 class="section-title">General Settings</h2>
+
+          <div class="setting-group">
+            <div class="setting">
+              <div class="setting-info">
+                <label class="setting-label">Enable Clipboard Monitoring</label>
+                <p class="setting-description">Automatically capture copied text</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="monitoringEnabled" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting">
+              <div class="setting-info">
+                <label class="setting-label">Maximum Items</label>
+                <p class="setting-description">Number of clipboard items to keep (excluding pinned)</p>
+              </div>
+              <input type="number" id="maxItems" class="input-number" value="50" min="10" max="1000">
+            </div>
+
+            <div class="setting">
+              <div class="setting-info">
+                <label class="setting-label">Auto-cleanup After (days)</label>
+                <p class="setting-description">Automatically delete items older than specified days</p>
+              </div>
+              <input type="number" id="autoCleanupDays" class="input-number" value="30" min="1" max="365">
+            </div>
+          </div>
+        </section>
+
+        <!-- Privacy Section -->
+        <section id="privacy" class="section">
+          <h2 class="section-title">Privacy & Security</h2>
+
+          <div class="setting-group">
+            <div class="setting">
+              <div class="setting-info">
+                <label class="setting-label">Save Sensitive Content</label>
+                <p class="setting-description">Allow saving of credit cards and passwords (not recommended)</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="saveSensitive">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-column">
+              <label class="setting-label">Excluded Sites</label>
+              <p class="setting-description">Clipboard monitoring will be disabled on these sites (one per line)</p>
+              <textarea id="excludedSites" class="textarea" rows="6" placeholder="banking.com&#10;*.paypal.com&#10;passwords.example.com"></textarea>
+              <p class="hint">Use * for wildcards (e.g., *.example.com)</p>
+            </div>
+
+            <div class="setting">
+              <button id="clearAllData" class="btn btn-danger">Clear All Clipboard Data</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- AI Tagging Section -->
+        <section id="ai" class="section">
+          <h2 class="section-title">AI Tagging Settings</h2>
+
+          <div class="setting-group">
+            <div class="setting">
+              <div class="setting-info">
+                <label class="setting-label">Enable AI Tagging</label>
+                <p class="setting-description">Automatically categorize and tag clipboard content</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="aiTaggingEnabled" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting">
+              <div class="setting-info">
+                <label class="setting-label">Code Language Detection</label>
+                <p class="setting-description">Detect programming languages in code snippets</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="codeDetection" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting">
+              <div class="setting-info">
+                <label class="setting-label">Topic Extraction</label>
+                <p class="setting-description">Extract key topics from text content</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="topicExtraction" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting">
+              <div class="setting-info">
+                <label class="setting-label">Entity Recognition</label>
+                <p class="setting-description">Identify emails, URLs, dates, and other entities</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="entityRecognition" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 16v-4m0-4h.01"/>
+            </svg>
+            <div>
+              <strong>AI Processing is Local</strong>
+              <p>All AI tagging happens on your device. No data is sent to external servers.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Shortcuts Section -->
+        <section id="shortcuts" class="section">
+          <h2 class="section-title">Keyboard Shortcuts</h2>
+
+          <div class="setting-group">
+            <div class="shortcut-item">
+              <div>
+                <div class="shortcut-label">Open Clipboard History</div>
+                <p class="shortcut-description">Open the popup to view and search history</p>
+              </div>
+              <kbd class="kbd">Ctrl + Shift + V</kbd>
+            </div>
+
+            <div class="shortcut-item">
+              <div>
+                <div class="shortcut-label">Quick Paste Last Item</div>
+                <p class="shortcut-description">Immediately paste the last copied item</p>
+              </div>
+              <kbd class="kbd">Ctrl + Shift + C</kbd>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 16v-4m0-4h.01"/>
+            </svg>
+            <div>
+              <strong>Customize Shortcuts</strong>
+              <p>To change keyboard shortcuts, visit <code>chrome://extensions/shortcuts</code></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="section">
+          <h2 class="section-title">About</h2>
+
+          <div class="about-card">
+            <div class="about-header">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+              <div>
+                <h3>Clipboard History Pro</h3>
+                <p>Version 1.0.0</p>
+              </div>
+            </div>
+
+            <div class="about-content">
+              <p>AI-powered clipboard manager that helps you never lose copied text again. Store, search, and organize your last 50 copied items with intelligent categorization.</p>
+
+              <div class="feature-list">
+                <h4>Key Features:</h4>
+                <ul>
+                  <li>Store up to 50 clipboard items</li>
+                  <li>AI-powered smart tagging and categorization</li>
+                  <li>Intelligent search with filters</li>
+                  <li>Pin important items</li>
+                  <li>Privacy controls for sensitive sites</li>
+                  <li>Local-first architecture</li>
+                  <li>Keyboard shortcuts for quick access</li>
+                </ul>
+              </div>
+
+              <div class="stats-card">
+                <h4>Your Statistics</h4>
+                <div class="stats-grid">
+                  <div class="stat-item">
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-label">Total Items</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value" id="statPinned">0</div>
+                    <div class="stat-label">Pinned</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-value" id="statCategories">0</div>
+                    <div class="stat-label">Categories</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Save Button -->
+        <div class="actions">
+          <button id="saveSettings" class="btn btn-primary">Save Settings</button>
+          <button id="resetSettings" class="btn btn-secondary">Reset to Defaults</button>
+        </div>
+
+        <!-- Toast -->
+        <div id="toast" class="toast"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
