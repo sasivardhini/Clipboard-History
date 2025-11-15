@@ -242,12 +242,23 @@ function createItemHTML(item) {
     `<span class="tag">${escapeHTML(tag)}</span>`
   ).join('');
 
+  // AI badge if analyzed by Google Gemini
+  const aiBadge = item.metadata?.aiGenerated ?
+    `<span class="ai-badge" title="Analyzed by Google Gemini AI">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 6v6l4 2"/>
+      </svg>
+      AI
+    </span>` : '';
+
   return `
     <div class="clipboard-item ${item.isPinned ? 'pinned' : ''}" data-id="${item.id}">
       <div class="item-header">
         <div class="item-category">
           ${categoryIcon}
           <span class="category-label">${item.category}</span>
+          ${aiBadge}
         </div>
         <div class="item-actions">
           <button class="action-btn pin-btn" data-id="${item.id}" title="${item.isPinned ? 'Unpin' : 'Pin'}">
@@ -447,11 +458,49 @@ async function deleteItem(id) {
 }
 
 /**
- * Update statistics
+ * Update statistics and category counts
  */
 function updateStats() {
   totalCountEl.textContent = allItems.length;
   pinnedCountEl.textContent = allItems.filter(item => item.isPinned).length;
+
+  // Update category counts
+  const categoryCounts = {
+    all: allItems.length,
+    image: 0,
+    text: 0,
+    code: 0,
+    url: 0,
+    json: 0,
+    email: 0,
+    phone: 0,
+    markdown: 0
+  };
+
+  // Count items by category
+  allItems.forEach(item => {
+    const category = item.category || 'text';
+    if (categoryCounts.hasOwnProperty(category)) {
+      categoryCounts[category]++;
+    } else {
+      categoryCounts.text++; // Default to text for unknown categories
+    }
+  });
+
+  // Update count badges on filter tabs
+  Object.keys(categoryCounts).forEach(category => {
+    const countEl = document.getElementById(`count-${category}`);
+    if (countEl) {
+      countEl.textContent = categoryCounts[category];
+
+      // Add visual feedback for counts
+      if (categoryCounts[category] > 0) {
+        countEl.style.opacity = '1';
+      } else {
+        countEl.style.opacity = '0.4';
+      }
+    }
+  });
 }
 
 /**

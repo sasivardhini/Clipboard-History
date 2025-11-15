@@ -1,10 +1,12 @@
 /**
  * Background Service Worker
  * Monitors clipboard changes and coordinates storage
+ * Now with Google Gemini AI integration!
  */
 
 import storageManager from './storage.js';
 import aiTagger from './ai-tagger.js';
+import geminiAI from './gemini-ai.js';
 
 // Last clipboard content to avoid duplicates
 let lastClipboardContent = '';
@@ -189,22 +191,40 @@ async function handleSaveClipboard(data, sender) {
       return { success: false, reason: 'too_large' };
     }
 
-    // Analyze content with AI
-    const analysis = aiTagger.analyze(content, url);
+    // Analyze content with Google Gemini AI (with fallback to local AI)
+    let analysis;
+    try {
+      // Try Google Gemini AI first for advanced analysis
+      analysis = await geminiAI.analyzeContent(content, 'text');
+
+      // If Gemini AI succeeded, enhance with local metadata
+      const localAnalysis = aiTagger.analyze(content, url);
+      analysis.metadata = localAnalysis.metadata;
+      analysis.url = url;
+    } catch (error) {
+      // Fallback to local AI tagger if Gemini fails
+      console.log('Using fallback AI tagger');
+      analysis = aiTagger.analyze(content, url);
+    }
 
     // Don't save sensitive content by default
     if (analysis.category === 'sensitive' && !settings.saveSensitive) {
       return { success: false, reason: 'sensitive' };
     }
 
-    // Create clipboard item
+    // Create clipboard item with AI analysis
     const item = {
       content: content,
       category: analysis.category,
-      tags: analysis.tags,
+      tags: analysis.tags || [],
       url: url,
-      title: analysis.metadata.title,
-      metadata: analysis.metadata
+      title: analysis.title || analysis.metadata?.title || 'Untitled',
+      metadata: {
+        ...analysis.metadata,
+        aiGenerated: analysis.aiGenerated || false,
+        confidence: analysis.confidence || 0.5,
+        sentiment: analysis.sentiment || 'informational'
+      }
     };
 
     // Save to storage

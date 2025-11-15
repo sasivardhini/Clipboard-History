@@ -46,13 +46,32 @@
       </button>
     </div>
 
-    <!-- Filter Tabs -->
+    <!-- Filter Tabs with Counts -->
     <div class="filter-tabs">
-      <button class="filter-tab active" data-category="all">All</button>
-      <button class="filter-tab" data-category="text">Text</button>
-      <button class="filter-tab" data-category="code">Code</button>
-      <button class="filter-tab" data-category="url">URLs</button>
-      <button class="filter-tab" data-category="json">JSON</button>
+      <button class="filter-tab active" data-category="all">
+        <span class="tab-label">All</span>
+        <span id="count-all" class="tab-count">0</span>
+      </button>
+      <button class="filter-tab" data-category="image">
+        <span class="tab-label">Images</span>
+        <span id="count-image" class="tab-count">0</span>
+      </button>
+      <button class="filter-tab" data-category="text">
+        <span class="tab-label">Text</span>
+        <span id="count-text" class="tab-count">0</span>
+      </button>
+      <button class="filter-tab" data-category="code">
+        <span class="tab-label">Code</span>
+        <span id="count-code" class="tab-count">0</span>
+      </button>
+      <button class="filter-tab" data-category="url">
+        <span class="tab-label">URLs</span>
+        <span id="count-url" class="tab-count">0</span>
+      </button>
+      <button class="filter-tab" data-category="json">
+        <span class="tab-label">JSON</span>
+        <span id="count-json" class="tab-count">0</span>
+      </button>
     </div>
 
     <!-- Stats Bar -->
