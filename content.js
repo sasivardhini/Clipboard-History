@@ -20,6 +20,36 @@
   let lastProcessedContent = '';
 
   /**
+   * Check if extension context is valid
+   */
+  function isExtensionContextValid() {
+    try {
+      return typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Send message to background with context validation
+   */
+  function safeSendMessage(message) {
+    if (!isExtensionContextValid()) {
+      console.debug('Extension context invalidated - extension was reloaded. Please refresh this page.');
+      return;
+    }
+
+    try {
+      chrome.runtime.sendMessage(message).catch((error) => {
+        // Silently handle errors - extension might be reloading
+        console.debug('Message send error:', error.message);
+      });
+    } catch (error) {
+      console.debug('Failed to send message:', error.message);
+    }
+  }
+
+  /**
    * Listen for copy events
    * Uses window.getSelection() - no permissions needed!
    */
@@ -34,15 +64,13 @@
 
         console.log('✓ Clipboard copy detected:', copiedText.substring(0, 50));
 
-        // Send to background script immediately
-        chrome.runtime.sendMessage({
+        // Send to background script with context validation
+        safeSendMessage({
           action: 'SAVE_CLIPBOARD',
           data: {
             content: copiedText,
             url: window.location.href
           }
-        }).catch((error) => {
-          console.debug('Could not send to background:', error.message);
         });
       }
     } catch (error) {
@@ -64,15 +92,13 @@
 
         console.log('✓ Clipboard cut detected:', cutText.substring(0, 50));
 
-        // Send to background script immediately
-        chrome.runtime.sendMessage({
+        // Send to background script with context validation
+        safeSendMessage({
           action: 'SAVE_CLIPBOARD',
           data: {
             content: cutText,
             url: window.location.href
           }
-        }).catch((error) => {
-          console.debug('Could not send to background:', error.message);
         });
       }
     } catch (error) {
@@ -83,23 +109,25 @@
   /**
    * Listen for messages from background script
    */
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    const { action } = request;
+  if (isExtensionContextValid()) {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      const { action } = request;
 
-    switch (action) {
-      case 'CHECK_CLIPBOARD':
-        checkClipboard().then(sendResponse);
-        return true;
+      switch (action) {
+        case 'CHECK_CLIPBOARD':
+          checkClipboard().then(sendResponse);
+          return true;
 
-      case 'PASTE_CONTENT':
-        pasteContent(request.data.content);
-        sendResponse({ success: true });
-        return false;
+        case 'PASTE_CONTENT':
+          pasteContent(request.data.content);
+          sendResponse({ success: true });
+          return false;
 
-      default:
-        return false;
-    }
-  });
+        default:
+          return false;
+      }
+    });
+  }
 
   /**
    * Check clipboard content (called periodically by background script)

@@ -720,7 +720,7 @@ function highlightNewItems() {
 function setupAutoRefresh() {
   let pollInterval;
 
-  // Poll for new items every 500ms (very responsive)
+  // Poll for new items every 300ms (ultra-responsive!)
   async function checkForNewItems() {
     try {
       const response = await sendMessageWithRetry({ action: 'GET_ITEMS' });
@@ -744,12 +744,15 @@ function setupAutoRefresh() {
         }
       }
     } catch (error) {
-      console.debug('Auto-refresh poll error:', error.message);
+      // Extension might be reloading - don't spam console
+      if (!error.message.includes('Extension context')) {
+        console.debug('Auto-refresh poll error:', error.message);
+      }
     }
   }
 
   // Start polling
-  pollInterval = setInterval(checkForNewItems, 500);
+  pollInterval = setInterval(checkForNewItems, 300);
 
   // Clean up on popup close
   window.addEventListener('unload', () => {
@@ -758,7 +761,7 @@ function setupAutoRefresh() {
     }
   });
 
-  console.log('✓ Auto-refresh polling activated (500ms interval)');
+  console.log('✓ Auto-refresh polling activated (300ms interval)');
 }
 
 // Initialize popup

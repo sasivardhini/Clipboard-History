@@ -379,7 +379,7 @@ function startClipboardMonitoring() {
     clearInterval(systemClipboardInterval);
   }
 
-  // Poll system clipboard every 500ms (very responsive!)
+  // Poll system clipboard every 300ms (ultra-responsive!)
   systemClipboardInterval = setInterval(async () => {
     try {
       // Read clipboard items (supports text, images, files)
@@ -389,8 +389,9 @@ function startClipboardMonitoring() {
         const item = clipboardItems[0];
 
         // Check for IMAGE first (priority)
-        if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
-          const imageBlob = await item.getType(item.types.find(t => t.startsWith('image/')));
+        if (item.types.includes('image/png') || item.types.includes('image/jpeg') || item.types.includes('image/gif') || item.types.includes('image/webp')) {
+          const imageType = item.types.find(t => t.startsWith('image/'));
+          const imageBlob = await item.getType(imageType);
 
           // Convert blob to base64 for storage
           const reader = new FileReader();
@@ -401,7 +402,7 @@ function startClipboardMonitoring() {
             if (hash !== lastSystemClipboardHash) {
               lastSystemClipboardHash = hash;
 
-              console.log('✓ Image clipboard detected:', imageBlob.type, imageBlob.size, 'bytes');
+              console.log('✓ Image copied:', imageBlob.type, Math.round(imageBlob.size/1024) + 'KB');
 
               // Save image to clipboard history
               const result = await handleSaveClipboard({
@@ -412,8 +413,15 @@ function startClipboardMonitoring() {
                 url: 'clipboard-image'
               }, null);
 
-              console.log('✓ Image save result:', result);
+              if (result.success) {
+                console.log('✓ Image saved to history');
+              } else {
+                console.warn('Failed to save image:', result.reason || result.error);
+              }
             }
+          };
+          reader.onerror = () => {
+            console.error('Failed to read image blob');
           };
           reader.readAsDataURL(imageBlob);
         }
@@ -426,7 +434,7 @@ function startClipboardMonitoring() {
             lastSystemClipboard = clipboardText;
             lastSystemClipboardHash = clipboardText.substring(0, 100);
 
-            console.log('✓ Text clipboard detected:', clipboardText.substring(0, 50));
+            console.log('✓ Text copied:', clipboardText.substring(0, 50) + '...');
 
             // Save to clipboard history
             const result = await handleSaveClipboard({
@@ -435,17 +443,24 @@ function startClipboardMonitoring() {
               url: 'clipboard'
             }, null);
 
-            console.log('✓ Text save result:', result);
+            if (result.success) {
+              console.log('✓ Text saved to history');
+            } else {
+              console.warn('Failed to save text:', result.reason || result.error);
+            }
           }
         }
       }
     } catch (error) {
       // Clipboard read may fail if extension loses focus - this is normal
-      console.debug('Clipboard check:', error.message);
+      // Don't spam console
+      if (!error.message.includes('Document is not focused')) {
+        console.debug('Clipboard check:', error.message);
+      }
     }
-  }, 500); // Check every 500ms for instant response
+  }, 300); // Check every 300ms for instant response!
 
-  console.log('✓ Clipboard monitoring active (500ms polling) - TEXT + IMAGES supported!');
+  console.log('✓ Clipboard monitoring active (300ms polling) - TEXT + IMAGES supported!');
 }
 
 /**
