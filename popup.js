@@ -1,12 +1,14 @@
 /**
- * Popup UI Controller
- * Manages the clipboard history popup interface
+ * Popup UI Controller - Advanced Auto-Refresh Edition
+ * Manages the clipboard history popup interface with real-time updates
  */
 
 let allItems = [];
 let filteredItems = [];
 let currentCategory = 'all';
 let searchQuery = '';
+let refreshInterval = null;
+let lastItemCount = 0;
 
 // DOM elements
 const clipboardList = document.getElementById('clipboardList');
@@ -21,13 +23,66 @@ const clearAllBtn = document.getElementById('clearAllBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 
 /**
- * Initialize popup
+ * Initialize popup with auto-refresh
  */
 async function init() {
   showLoading();
   await loadItems();
   setupEventListeners();
+  setupAutoRefresh();
   hideLoading();
+
+  // Add subtle entrance animation
+  document.body.classList.add('loaded');
+}
+
+/**
+ * Setup auto-refresh mechanism
+ */
+function setupAutoRefresh() {
+  // Refresh every 2 seconds for real-time updates
+  refreshInterval = setInterval(async () => {
+    await refreshItems();
+  }, 2000);
+
+  // Listen for storage changes from background
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'ITEMS_UPDATED') {
+      refreshItems(true); // Force refresh with animation
+    }
+  });
+
+  // Cleanup on popup close
+  window.addEventListener('unload', () => {
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+  });
+}
+
+/**
+ * Refresh items with smooth animation
+ */
+async function refreshItems(showAnimation = false) {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'GET_ITEMS' });
+    const newItems = response || [];
+
+    // Check if there are new items
+    const hasNewItems = newItems.length > lastItemCount;
+
+    if (hasNewItems && showAnimation) {
+      // Flash subtle notification
+      showNewItemNotification();
+    }
+
+    lastItemCount = newItems.length;
+    allItems = newItems;
+    applyFilters();
+    updateStats();
+  } catch (error) {
+    console.debug('Refresh error (normal during extension reload):', error);
+  }
 }
 
 /**
@@ -392,6 +447,35 @@ function showToast(message) {
     toast.classList.remove('show');
     setTimeout(() => toast.remove(), 300);
   }, 2000);
+}
+
+/**
+ * Show new item notification with animation
+ */
+function showNewItemNotification() {
+  // Create subtle flash effect
+  const flash = document.createElement('div');
+  flash.className = 'new-item-flash';
+  document.body.appendChild(flash);
+
+  setTimeout(() => {
+    flash.classList.add('active');
+  }, 10);
+
+  setTimeout(() => {
+    flash.remove();
+  }, 600);
+
+  // Add highlight to first item
+  setTimeout(() => {
+    const firstItem = document.querySelector('.clipboard-item');
+    if (firstItem) {
+      firstItem.classList.add('new-item');
+      setTimeout(() => {
+        firstItem.classList.remove('new-item');
+      }, 2000);
+    }
+  }, 100);
 }
 
 // Initialize popup
