@@ -28,12 +28,40 @@ const refreshBtn = document.getElementById('refreshBtn');
  */
 async function init() {
   showLoading();
+
+  // Capture current clipboard content on open
+  await captureCurrentClipboard();
+
   await loadItems();
   setupEventListeners();
   hideLoading();
 
   // Add subtle entrance animation
   document.body.classList.add('loaded');
+}
+
+/**
+ * Capture current clipboard content
+ */
+async function captureCurrentClipboard() {
+  try {
+    // Read current clipboard
+    const text = await navigator.clipboard.readText();
+
+    if (text && text.trim()) {
+      // Save to clipboard history
+      await chrome.runtime.sendMessage({
+        action: 'SAVE_CLIPBOARD',
+        data: {
+          content: text,
+          url: 'chrome-extension://popup'
+        }
+      });
+    }
+  } catch (error) {
+    // Clipboard read permission not granted or empty clipboard
+    console.log('Could not read clipboard:', error.message);
+  }
 }
 
 /**

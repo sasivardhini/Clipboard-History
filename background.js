@@ -36,12 +36,43 @@ async function initialize() {
   // Set up context menu
   setupContextMenu();
 
+  // Inject content scripts into all existing tabs
+  await injectContentScriptsToAllTabs();
+
   // Start clipboard monitoring if enabled
   if (settings.monitoringEnabled) {
     startClipboardMonitoring();
   }
 
   console.log('Clipboard History Extension: Ready!');
+}
+
+/**
+ * Inject content scripts into all existing tabs
+ */
+async function injectContentScriptsToAllTabs() {
+  try {
+    const tabs = await chrome.tabs.query({});
+
+    for (const tab of tabs) {
+      // Skip chrome:// and other restricted URLs
+      if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('edge://') && !tab.url.startsWith('about:')) {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          });
+        } catch (error) {
+          // Silently skip tabs where injection fails
+          console.log(`Could not inject into tab ${tab.id}:`, error.message);
+        }
+      }
+    }
+
+    console.log('Content scripts injected into existing tabs');
+  } catch (error) {
+    console.error('Error injecting content scripts:', error);
+  }
 }
 
 /**
