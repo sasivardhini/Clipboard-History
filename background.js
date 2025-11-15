@@ -307,39 +307,21 @@ function isExcludedSite(url) {
 
 /**
  * Start monitoring clipboard changes
+ * NOTE: We don't use intervals anymore - content scripts handle clipboard events
  */
 function startClipboardMonitoring() {
-  if (clipboardCheckInterval) return;
-
-  console.log('Clipboard monitoring started');
-
-  // Check clipboard every 1 second
-  clipboardCheckInterval = setInterval(async () => {
-    try {
-      // Get active tab
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-      if (tab && tab.id) {
-        // Request clipboard content from content script
-        chrome.tabs.sendMessage(tab.id, { action: 'CHECK_CLIPBOARD' }).catch(() => {
-          // Tab might not have content script injected
-        });
-      }
-    } catch (error) {
-      // Silently handle errors
-    }
-  }, 1000);
+  console.log('✓ Clipboard monitoring enabled (event-driven via content scripts)');
+  // Content scripts will automatically capture copy/cut events
+  // No interval needed - this prevents service worker sleep issues
 }
 
 /**
  * Stop monitoring clipboard changes
  */
 function stopClipboardMonitoring() {
-  if (clipboardCheckInterval) {
-    clearInterval(clipboardCheckInterval);
-    clipboardCheckInterval = null;
-    console.log('Clipboard monitoring stopped');
-  }
+  console.log('Clipboard monitoring disabled');
+  // Note: Content scripts will still capture events
+  // This just updates the settings flag
 }
 
 /**

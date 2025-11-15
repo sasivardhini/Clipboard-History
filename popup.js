@@ -256,23 +256,12 @@ function createItemHTML(item) {
     `<span class="tag">${escapeHTML(tag)}</span>`
   ).join('');
 
-  // AI badge if analyzed by GROQ AI
-  const aiProvider = item.metadata?.aiProvider || 'AI';
-  const aiBadge = item.metadata?.aiGenerated ?
-    `<span class="ai-badge groq-badge" title="Analyzed by ${aiProvider} (Llama 3.1 - Ultra Fast!)">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-      </svg>
-      ${aiProvider}
-    </span>` : '';
-
   return `
     <div class="clipboard-item ${item.isPinned ? 'pinned' : ''}" data-id="${item.id}">
       <div class="item-header">
         <div class="item-category">
           ${categoryIcon}
           <span class="category-label">${item.category}</span>
-          ${aiBadge}
         </div>
         <div class="item-actions">
           <button class="action-btn pin-btn" data-id="${item.id}" title="${item.isPinned ? 'Unpin' : 'Pin'}">
